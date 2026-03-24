@@ -278,6 +278,52 @@ def test_runner_with_resumption_token(tmp_path) -> None:
     assert result.deleted_records == 0
 
 
+def test_runner_continues_when_page_is_empty_but_token_exists(tmp_path) -> None:
+    page1 = """
+    <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+      <ListRecords>
+        <resumptionToken>cursor-2</resumptionToken>
+      </ListRecords>
+    </OAI-PMH>
+    """
+    page2 = """
+    <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+      <ListRecords>
+        <record>
+          <header><identifier>id-2</identifier><datestamp>2026-01-02</datestamp></header>
+          <metadata><oai_dc:dc xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"><dc:rights>open access</dc:rights></oai_dc:dc></metadata>
+        </record>
+      </ListRecords>
+    </OAI-PMH>
+    """
+
+    client = FakeClient([page1, page2])
+    storage = FakeStorage()
+    cfg = HarvesterConfig(
+        base_url="https://example.org/oai",
+        metadata_prefix="oai_dc",
+        set_spec=None,
+        from_date=None,
+        until_date=None,
+        state_file=tmp_path / "state.json",
+        open_access_only=False,
+        open_access_terms=("open access",),
+        batch_size=0,
+        timeout_seconds=30,
+        user_agent="test",
+        sf_account="acc",
+        sf_user="u",
+        sf_password="p",
+    )
+
+    result = Harvester(cfg, client=client, storage=storage).run(dry_run=False)
+
+    assert len(client.params) == 2
+    assert client.params[1]["resumption_token"] == "cursor-2"
+    assert result.total_records == 1
+    assert result.uploaded_records == 1
+
+
 def test_runner_respects_batch_size_for_storage_writes(tmp_path) -> None:
     page = """
     <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">

@@ -204,6 +204,7 @@ class Harvester:
     def run(self, *, dry_run: bool = False) -> HarvestResult:
         state = self._load_state()
         token = state.resumption_token
+        previous_token: str | None = None
         uploaded = 0
         active_records = 0
         deleted_records = 0
@@ -270,8 +271,10 @@ class Harvester:
             if not token:
                 break
 
-            if not page.records:
+            if token == previous_token:
                 break
+
+            previous_token = token
 
         return HarvestResult(
             total_records=state.total_records,

@@ -84,7 +84,11 @@ def load_state(
 
     total_records = 0
     raw_total_records = payload.get("total_records")
-    if isinstance(raw_total_records, int):
+    if (
+        isinstance(raw_total_records, int)
+        and not isinstance(raw_total_records, bool)
+        and raw_total_records >= 0
+    ):
         total_records = raw_total_records
     elif isinstance(raw_total_records, str) and raw_total_records.isdigit():
         total_records = int(raw_total_records)

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from requests.structures import CaseInsensitiveDict
 
+from oai_harvester import client as client_module
 from oai_harvester.client import OaiClient
 
 
@@ -13,14 +13,14 @@ class FakeResponse:
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
-            raise RuntimeError("HTTP error")
+            raise client_module.requests.HTTPError("HTTP error")
 
 
 class FakeSession:
     def __init__(self, text: str) -> None:
         self.text = text
         self.calls: list[dict[str, object]] = []
-        self.headers = CaseInsensitiveDict()
+        self.headers: dict[str, str] = {}
 
     def get(self, url: str, params: dict[str, str], timeout: int):
         self.calls.append({"url": url, "params": params, "timeout": timeout})
@@ -32,8 +32,7 @@ class FakeSession:
 
 def test_client_build_params_without_resumption_token() -> None:
     session = FakeSession("<OAI-PMH/>")
-    client = OaiClient("https://example.org/oai", "ua", 15)
-    client._session = session  # type: ignore[attr-defined]
+    client = OaiClient("https://example.org/oai", "ua", 15, session=session)
 
     text = client.list_records(
         metadata_prefix="oai_dc",
@@ -55,8 +54,7 @@ def test_client_build_params_without_resumption_token() -> None:
 
 def test_client_uses_resumption_token_when_present() -> None:
     session = FakeSession("<OAI-PMH/>")
-    client = OaiClient("https://example.org/oai", "ua", 15)
-    client._session = session  # type: ignore[attr-defined]
+    client = OaiClient("https://example.org/oai", "ua", 15, session=session)
 
     client.list_records(
         metadata_prefix="oai_dc",
@@ -75,10 +73,11 @@ def test_client_uses_resumption_token_when_present() -> None:
 def test_client_transport_error() -> None:
     class ErrSession(FakeSession):
         def get(self, url, params, timeout):  # type: ignore[override]
-            raise RuntimeError("network")
+            raise client_module.requests.Timeout("network")
 
-    client = OaiClient("https://example.org/oai", "ua", 15)
-    client._session = ErrSession("<OAI-PMH/>")  # type: ignore[attr-defined]
+    client = OaiClient(
+        "https://example.org/oai", "ua", 15, session=ErrSession("<OAI-PMH/>")
+    )
 
     from oai_harvester.errors import OAITransportError
 

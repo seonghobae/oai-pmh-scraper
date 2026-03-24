@@ -41,9 +41,14 @@ class SnowflakeStorage:
                 password=password,
                 role=role,
                 warehouse=warehouse,
+                autocommit=False,
             )
         else:
             self.connection = connection
+
+        autocommit = getattr(self.connection, "autocommit", None)
+        if isinstance(autocommit, bool) and autocommit:
+            raise ValueError("Injected connection must have autocommit disabled")
 
     @property
     def full_table(self) -> str:
@@ -111,7 +116,7 @@ class SnowflakeStorage:
                 record.identifier,
                 record.status,
                 record.datestamp,
-                json.dumps(record.metadata, ensure_ascii=False),
+                json.dumps(dict(record.metadata), ensure_ascii=False),
                 record.raw_record_xml,
                 bool(open_access),
                 source_url,
@@ -120,9 +125,15 @@ class SnowflakeStorage:
             for record, open_access in zip(records, open_access_flags, strict=True)
         ]
 
-        with self.connection.cursor() as cursor:
-            cursor.executemany(sql, params)
-        self.connection.commit()
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.executemany(sql, params)
+            self.connection.commit()
+        except Exception:
+            rollback = getattr(self.connection, "rollback", None)
+            if callable(rollback):
+                rollback()
+            raise
         return len(params)
 
     def close(self) -> None:

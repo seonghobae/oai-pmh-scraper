@@ -96,11 +96,15 @@ def load_config(env: Mapping[str, str | None]) -> HarvesterConfig:
         batch_size = int(_env_text(env.get("HARVEST_BATCH_SIZE"), "500"))
     except ValueError as exc:
         raise ValueError("HARVEST_BATCH_SIZE must be integer") from exc
+    if batch_size < 1:
+        raise ValueError("HARVEST_BATCH_SIZE must be >= 1")
 
     try:
         timeout_seconds = int(_env_text(env.get("OAI_REQUEST_TIMEOUT"), "30"))
     except ValueError as exc:
         raise ValueError("OAI_REQUEST_TIMEOUT must be integer") from exc
+    if timeout_seconds < 1:
+        raise ValueError("OAI_REQUEST_TIMEOUT must be >= 1")
 
     user_agent = _env_text(env.get("OAI_USER_AGENT"), "oai-pmh-scraper/0.1.0")
 

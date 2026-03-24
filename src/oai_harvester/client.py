@@ -18,10 +18,16 @@ class OaiRequest:
 
 
 class OaiClient:
-    def __init__(self, base_url: str, user_agent: str, timeout_seconds: int) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        user_agent: str,
+        timeout_seconds: int,
+        session: requests.Session | None = None,
+    ) -> None:
         self.base_url = base_url
         self.timeout_seconds = timeout_seconds
-        self._session = requests.Session()
+        self._session = session or requests.Session()
         self._session.headers.update({"User-Agent": user_agent})
 
     def _build_params(self, req: OaiRequest) -> dict[str, str]:
@@ -47,7 +53,7 @@ class OaiClient:
                 self.base_url, params=params, timeout=self.timeout_seconds
             )
             response.raise_for_status()
-        except Exception as exc:
+        except requests.RequestException as exc:
             raise OAITransportError("Failed to fetch OAI-PMH response") from exc
         return response.text
 

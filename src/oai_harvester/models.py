@@ -1,16 +1,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 
 @dataclass(frozen=True)
 class OaiRecord:
     identifier: str
     datestamp: str
-    metadata: dict[str, Any]
+    metadata: Mapping[str, Any]
     raw_record_xml: str
     deleted: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "metadata",
+            MappingProxyType(dict(self.metadata)),
+        )
 
     @property
     def status(self) -> str:

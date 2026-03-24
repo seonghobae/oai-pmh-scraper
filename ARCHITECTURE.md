@@ -25,6 +25,12 @@
   close failure cannot skip the other.
 - Snowflake upserts are sent in batches with `executemany` (single transaction
   per batch write), rather than one network roundtrip per record.
+- Storage writes enforce transaction safety: connections are non-autocommit,
+  exceptions trigger rollback, and commit happens only on successful batch write.
+- Runner continues pagination based on `resumptionToken` even when a page has
+  zero records, with repeated-token guard to avoid stuck loops.
+- `OaiRecord.metadata` is stored as an immutable mapping copy to prevent
+  accidental mutation after record creation.
 
 ## Change impact rule
 
