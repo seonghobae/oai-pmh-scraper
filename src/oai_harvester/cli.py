@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 
 from .client import OaiClient
 from .config import HarvesterConfig, load_config
@@ -40,9 +41,21 @@ def run_harvest(*, dry_run: bool = False) -> int:
         harvester = Harvester(config=config, client=client, storage=storage)
         result = harvester.run(dry_run=dry_run)
     finally:
+        close_error: Exception | None = None
         if storage is not None:
-            storage.close()
-        client.close()
+            try:
+                storage.close()
+            except Exception as exc:  # pragma: no cover - tested via behavior
+                close_error = exc
+
+        try:
+            client.close()
+        except Exception as exc:  # pragma: no cover - tested via behavior
+            if close_error is None:
+                close_error = exc
+
+        if close_error is not None and sys.exc_info()[0] is None:
+            raise close_error
 
     print(
         f"harvested={result.total_records} uploaded={result.uploaded_records} "

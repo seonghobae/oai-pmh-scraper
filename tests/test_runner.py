@@ -4,7 +4,12 @@ import pytest
 
 from oai_harvester.config import HarvesterConfig
 from oai_harvester.models import OaiRecord
-from oai_harvester.runner import Harvester, is_open_access
+from oai_harvester.runner import (
+    Harvester,
+    _filter_storage_records,
+    _iter_unique,
+    is_open_access,
+)
 from oai_harvester.errors import OAIProtocolError
 
 
@@ -53,6 +58,42 @@ def test_open_access_detection_default_terms() -> None:
         raw_record_xml="<record/>",
     )
     assert is_open_access(record, ("open access", "cc-by")) is True
+
+
+def test_iter_unique_prefers_valid_latest_datestamp() -> None:
+    newer_valid = OaiRecord(
+        identifier="id1",
+        datestamp="2026-01-10",
+        metadata={},
+        raw_record_xml="<record/>",
+    )
+    invalid_date = OaiRecord(
+        identifier="id1",
+        datestamp="not-a-date",
+        metadata={},
+        raw_record_xml="<record/>",
+    )
+
+    deduped = _iter_unique([newer_valid, invalid_date])
+
+    assert len(deduped) == 1
+    assert deduped[0].datestamp == "2026-01-10"
+
+
+def test_filter_storage_records_raises_on_mismatched_lengths() -> None:
+    record = OaiRecord(
+        identifier="id1",
+        datestamp="2026-01-10",
+        metadata={},
+        raw_record_xml="<record/>",
+    )
+
+    with pytest.raises(ValueError):
+        _filter_storage_records(
+            [record],
+            [],
+            open_access_only=True,
+        )
 
 
 def test_runner_preserves_deleted_records_when_open_access_filter_enabled(

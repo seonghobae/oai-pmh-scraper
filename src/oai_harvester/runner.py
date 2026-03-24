@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Protocol
 
 from .config import HarvesterConfig
@@ -31,6 +32,28 @@ class _OaiClientProtocol(Protocol):
     ) -> str: ...
 
 
+class _StorageProtocol(Protocol):
+    def upsert_records(
+        self,
+        records: list[OaiRecord],
+        *,
+        source_url: str,
+        open_access_flags: list[bool],
+    ) -> int: ...
+
+
+_DATESTAMP_FORMATS = ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d")
+
+
+def _parse_datestamp(datestamp: str) -> datetime:
+    for fmt in _DATESTAMP_FORMATS:
+        try:
+            return datetime.strptime(datestamp, fmt)
+        except ValueError:
+            continue
+    return datetime.min
+
+
 def _iter_unique(records: list[OaiRecord]) -> list[OaiRecord]:
     by_identifier: dict[str, OaiRecord] = {}
     for record in records:
@@ -38,7 +61,7 @@ def _iter_unique(records: list[OaiRecord]) -> list[OaiRecord]:
         if prev is None:
             by_identifier[record.identifier] = record
             continue
-        if prev.datestamp < record.datestamp:
+        if _parse_datestamp(prev.datestamp) < _parse_datestamp(record.datestamp):
             by_identifier[record.identifier] = record
     return list(by_identifier.values())
 
@@ -122,7 +145,7 @@ def _filter_storage_records(
 
     filtered_records: list[OaiRecord] = []
     filtered_flags: list[bool] = []
-    for record, is_open in zip(records, open_access_flags):
+    for record, is_open in zip(records, open_access_flags, strict=True):
         if record.deleted or is_open:
             filtered_records.append(record)
             filtered_flags.append(is_open)
@@ -131,7 +154,10 @@ def _filter_storage_records(
 
 class Harvester:
     def __init__(
-        self, config: HarvesterConfig, client: _OaiClientProtocol, storage
+        self,
+        config: HarvesterConfig,
+        client: _OaiClientProtocol,
+        storage: _StorageProtocol | None,
     ) -> None:
         self.config = config
         self.client = client

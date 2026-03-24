@@ -19,6 +19,12 @@
   endless token loop.
 - State identity includes source and query shape (`metadata_prefix`, `set_spec`,
   `from_date`, `until_date`).
+- Deduplication compares parsed datestamps (`%Y-%m-%dT%H:%M:%SZ` / `%Y-%m-%d`)
+  and treats unparseable values as the lowest priority.
+- CLI teardown always attempts both `storage.close()` and `client.close()` so one
+  close failure cannot skip the other.
+- Snowflake upserts are sent in batches with `executemany` (single transaction
+  per batch write), rather than one network roundtrip per record.
 
 ## Change impact rule
 

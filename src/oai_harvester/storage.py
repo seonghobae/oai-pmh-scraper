@@ -71,7 +71,10 @@ class SnowflakeStorage:
         if not records:
             return 0
         if len(records) != len(open_access_flags):
-            raise ValueError("records and open_access_flags must have the same length")
+            raise ValueError(
+                "records/open_access_flags length mismatch for "
+                f"source_url={source_url!r}: {len(records)} != {len(open_access_flags)}"
+            )
 
         self.ensure_table()
         sql = f"""
@@ -103,25 +106,24 @@ class SnowflakeStorage:
         """
 
         now = datetime.now(timezone.utc)
-        count = 0
+        params = [
+            (
+                record.identifier,
+                record.status,
+                record.datestamp,
+                json.dumps(record.metadata, ensure_ascii=False),
+                record.raw_record_xml,
+                bool(open_access),
+                source_url,
+                now,
+            )
+            for record, open_access in zip(records, open_access_flags, strict=True)
+        ]
+
         with self.connection.cursor() as cursor:
-            for record, open_access in zip(records, open_access_flags):
-                cursor.execute(
-                    sql,
-                    [
-                        record.identifier,
-                        record.status,
-                        record.datestamp,
-                        json.dumps(record.metadata, ensure_ascii=False),
-                        record.raw_record_xml,
-                        bool(open_access),
-                        source_url,
-                        now,
-                    ],
-                )
-                count += 1
+            cursor.executemany(sql, params)
         self.connection.commit()
-        return count
+        return len(params)
 
     def close(self) -> None:
         self.connection.close()

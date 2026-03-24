@@ -117,7 +117,9 @@ def _parse_root(root: ET.Element) -> OaiListRecordsPage:
         metadata_parent = record.find(f"{_NS}metadata")
         metadata: dict[str, Any] = {}
         if metadata_parent is not None:
-            metadata = _to_json(metadata_parent)
+            metadata_payload = _to_json(metadata_parent)
+            if isinstance(metadata_payload, dict):
+                metadata = metadata_payload
 
         records.append(
             OaiRecord(

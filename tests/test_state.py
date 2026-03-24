@@ -69,6 +69,7 @@ def test_state_invalid_resumption_token_type_starts_clean(tmp_path) -> None:
     loaded = load_state(path, "https://example.org/oai", "oai_dc", None, None, None)
 
     assert loaded.resumption_token is None
+    assert loaded.total_records == 0
 
 
 def test_state_corrupt_json_starts_clean(tmp_path) -> None:

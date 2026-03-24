@@ -61,5 +61,43 @@ def test_cli_closes_resources_on_harvest_failure(
     with pytest.raises(RuntimeError):
         cli.run_harvest(dry_run=False)
 
-    assert "client.close" in events
-    assert "storage.close" in events
+    assert events == ["storage.close", "client.close"]
+
+
+def test_cli_closes_client_even_if_storage_close_raises(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    events: list[str] = []
+
+    class FakeClient:
+        def close(self) -> None:
+            events.append("client.close")
+
+    class FakeHarvester:
+        def __init__(
+            self,
+            *args,
+            **kwargs,
+        ) -> None:
+            pass
+
+        def run(self, *, dry_run: bool = False) -> object:
+            raise RuntimeError("harvest failure")
+
+    class FakeStorage:
+        def close(self) -> None:
+            events.append("storage.close")
+            raise RuntimeError("storage close failure")
+
+    monkeypatch.setattr(
+        cli, "load_config", lambda env: _base_config(tmp_path / "state.json")
+    )
+    monkeypatch.setattr(cli, "OaiClient", lambda *args, **kwargs: FakeClient())
+    monkeypatch.setattr(cli, "_build_storage", lambda config: FakeStorage())
+    monkeypatch.setattr(cli, "Harvester", FakeHarvester)
+
+    with pytest.raises(RuntimeError, match="harvest failure"):
+        cli.run_harvest(dry_run=False)
+
+    assert events == ["storage.close", "client.close"]

@@ -14,7 +14,7 @@
 1. Run one dry run:
 
 ```bash
-OAI_BASE_URL=https://example.org/oai?verb=ListRecords uv run oai-pmh-harvester --dry-run
+OAI_BASE_URL=https://example.org/oai uv run oai-pmh-harvester --dry-run
 ```
 
 1. Run live dry with `OPEN_ACCESS_ONLY` and without to validate both modes

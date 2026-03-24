@@ -69,7 +69,7 @@ def test_no_records_match_raises_specific_exception() -> None:
 def test_unknown_oai_error_bubbles_up() -> None:
     xml = """
     <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
-      <error code="badResumptionToken">Invalid token</error>
+      <error code="cannotDisseminateFormat">Cannot disseminate this format</error>
     </OAI-PMH>
     """
 
