@@ -9,6 +9,7 @@ import snowflake.connector  # type: ignore
 from .models import OaiRecord
 
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_UTC = getattr(datetime, "UTC", timezone.utc)
 
 
 def _safe_identifier(value: str, label: str) -> str:
@@ -110,7 +111,7 @@ class SnowflakeStorage:
             values (src.identifier, src.status, src.datestamp, src.metadata, src.raw_record_xml, src.open_access, src.source_url, src.harvested_at)
         """
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(_UTC)
         params = [
             (
                 record.identifier,

@@ -83,8 +83,8 @@ def parse_oai_listrecords(xml_text: str) -> OaiListRecordsPage:
                 EntitiesForbidden,
                 ExternalReferenceForbidden,
                 ParseError,
-            ):
-                raise OAIParseError("Invalid OAI-PMH XML") from exc
+            ) as nested_exc:
+                raise OAIParseError("Invalid OAI-PMH XML") from nested_exc
 
             return _parse_root(root)
 

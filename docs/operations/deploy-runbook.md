@@ -17,8 +17,11 @@
 OAI_BASE_URL=https://example.org/oai uv run oai-pmh-harvester --dry-run
 ```
 
-1. Run live dry with `OPEN_ACCESS_ONLY` and without to validate both modes
-   as needed.
+1. Validate both OA modes explicitly:
+   - **Dry-run (no writes):** run with `--dry-run` and set
+     `OPEN_ACCESS_ONLY=true` when validating OA-only filtering.
+   - **Live run (writes enabled):** run without `--dry-run`; toggle
+     `OPEN_ACCESS_ONLY` as required by the target ingestion policy.
 
 ## Post-deploy verification
 

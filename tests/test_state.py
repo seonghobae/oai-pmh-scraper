@@ -53,7 +53,14 @@ def test_state_query_shape_mismatch_starts_clean(tmp_path) -> None:
     )
     save_state(path, state)
 
-    loaded = load_state(path, "https://example.org/oai", "oai_dc", "math", None, None)
+    loaded = load_state(
+        path,
+        "https://example.org/oai",
+        "mods",
+        "math",
+        "2025-01-01",
+        "2025-01-31",
+    )
     assert loaded.resumption_token is None
     assert loaded.total_records == 0
 

@@ -88,7 +88,7 @@ def test_filter_storage_records_raises_on_mismatched_lengths() -> None:
         raw_record_xml="<record/>",
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="shorter than"):
         _filter_storage_records(
             [record],
             [],

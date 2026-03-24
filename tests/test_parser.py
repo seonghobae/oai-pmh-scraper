@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from oai_harvester.parser import OaiListRecordsPage, parse_oai_listrecords
-from oai_harvester.errors import OAIError, OAINoRecords, OAIProtocolError
+from oai_harvester.errors import OAINoRecords, OAIProtocolError
 
 
 def test_parse_records_with_token() -> None:
@@ -73,8 +73,9 @@ def test_unknown_oai_error_bubbles_up() -> None:
     </OAI-PMH>
     """
 
-    with pytest.raises(OAIError):
+    with pytest.raises(OAIProtocolError) as exc_info:
         parse_oai_listrecords(xml)
+    assert exc_info.value.code == "cannotDisseminateFormat"
 
 
 def test_bad_resumption_token_is_protocol_error() -> None:

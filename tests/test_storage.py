@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import pytest
 from typing import Literal
 
@@ -110,7 +111,10 @@ def test_storage_rejects_mismatched_record_and_flag_lengths() -> None:
         )
     ]
 
-    with pytest.raises(ValueError, match="source_url='https://example.org/oai'"):
+    with pytest.raises(
+        ValueError,
+        match=re.escape("source_url='https://example.org/oai'"),
+    ):
         storage.upsert_records(records, "https://example.org/oai", [True, False])
 
 
