@@ -5,6 +5,13 @@ from dataclasses import dataclass
 import re
 from typing import Any
 from xml.etree import ElementTree as ET
+from defusedxml.ElementTree import (  # type: ignore
+    DTDForbidden,
+    EntitiesForbidden,
+    ExternalReferenceForbidden,
+    ParseError,
+    fromstring as safe_fromstring,
+)
 
 from .errors import OAINoRecords, OAIParseError, OAIProtocolError
 from .models import OaiRecord
@@ -60,15 +67,27 @@ def _iter_records(root: ET.Element) -> Iterable[ET.Element]:
 
 def parse_oai_listrecords(xml_text: str) -> OaiListRecordsPage:
     try:
-        root = ET.fromstring(xml_text)
-    except ET.ParseError as exc:
+        root = safe_fromstring(xml_text)
+    except (
+        DTDForbidden,
+        EntitiesForbidden,
+        ExternalReferenceForbidden,
+        ParseError,
+    ) as exc:
         if "unbound prefix" in str(exc):
             try:
                 xml_text = _normalize_xml(xml_text)
-                root = ET.fromstring(xml_text)
-            except ET.ParseError:
+                root = safe_fromstring(xml_text)
+            except (
+                DTDForbidden,
+                EntitiesForbidden,
+                ExternalReferenceForbidden,
+                ParseError,
+            ):
                 raise OAIParseError("Invalid OAI-PMH XML") from exc
+
             return _parse_root(root)
+
         raise OAIParseError("Invalid OAI-PMH XML") from exc
 
     return _parse_root(root)
@@ -98,17 +117,7 @@ def _parse_root(root: ET.Element) -> OaiListRecordsPage:
         metadata_parent = record.find(f"{_NS}metadata")
         metadata: dict[str, Any] = {}
         if metadata_parent is not None:
-            for child in list(metadata_parent):
-                child_key = child.tag.split("}")[-1]
-                child_value = _to_json(child)
-                if child_key in metadata:
-                    existing = metadata[child_key]
-                    if isinstance(existing, list):
-                        existing.append(child_value)
-                    else:
-                        metadata[child_key] = [existing, child_value]
-                else:
-                    metadata[child_key] = child_value
+            metadata = _to_json(metadata_parent)
 
         records.append(
             OaiRecord(

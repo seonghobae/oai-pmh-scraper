@@ -4,14 +4,17 @@ import argparse
 import os
 
 from .client import OaiClient
-from .config import load_config
+from .config import HarvesterConfig, load_config
 from .runner import Harvester
 from .storage import SnowflakeStorage
 
 
-def _build_storage(config) -> SnowflakeStorage | None:
+def _build_storage(config: HarvesterConfig) -> SnowflakeStorage | None:
     if not config.is_snowflake_enabled:
         return None
+    assert config.sf_account is not None
+    assert config.sf_user is not None
+    assert config.sf_password is not None
     return SnowflakeStorage(
         account=config.sf_account,
         user=config.sf_user,
@@ -43,7 +46,8 @@ def run_harvest(*, dry_run: bool = False) -> int:
 
     print(
         f"harvested={result.total_records} uploaded={result.uploaded_records} "
-        f"active={result.open_records} deleted={result.closed_records}"
+        f"active={result.active_records} "
+        f"deleted={result.deleted_records}"
     )
     return 0
 

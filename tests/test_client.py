@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+from requests.structures import CaseInsensitiveDict
+
 from oai_harvester.client import OaiClient
 
 
@@ -17,7 +20,7 @@ class FakeSession:
     def __init__(self, text: str) -> None:
         self.text = text
         self.calls: list[dict[str, object]] = []
-        self.headers: dict[str, str] = {}
+        self.headers = CaseInsensitiveDict()
 
     def get(self, url: str, params: dict[str, str], timeout: int):
         self.calls.append({"url": url, "params": params, "timeout": timeout})
@@ -25,9 +28,6 @@ class FakeSession:
 
     def close(self) -> None:
         pass
-
-    def update(self, value: dict[str, str]) -> None:
-        self.headers.update(value)
 
 
 def test_client_build_params_without_resumption_token() -> None:
@@ -82,7 +82,7 @@ def test_client_transport_error() -> None:
 
     from oai_harvester.errors import OAITransportError
 
-    try:
+    with pytest.raises(OAITransportError):
         client.list_records(
             metadata_prefix="oai_dc",
             set_spec=None,
@@ -90,7 +90,3 @@ def test_client_transport_error() -> None:
             until_date=None,
             resumption_token=None,
         )
-    except OAITransportError:
-        pass
-    else:
-        raise AssertionError("Expected OAITransportError")

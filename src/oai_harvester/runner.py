@@ -15,8 +15,8 @@ from .state import HarvestState, load_state, save_state
 class HarvestResult:
     total_records: int
     uploaded_records: int
-    open_records: int
-    closed_records: int
+    active_records: int
+    deleted_records: int
 
 
 class _OaiClientProtocol(Protocol):
@@ -94,6 +94,41 @@ def is_open_access(record: OaiRecord, terms: tuple[str, ...]) -> bool:
     return any(term in raw for term in normalized)
 
 
+def _classify_records(
+    records: list[OaiRecord], terms: tuple[str, ...]
+) -> tuple[list[bool], int, int]:
+    open_flags: list[bool] = []
+    active_records = 0
+    deleted_records = 0
+
+    for record in records:
+        if record.deleted:
+            open_flags.append(False)
+            deleted_records += 1
+            continue
+
+        is_open = is_open_access(record, terms)
+        open_flags.append(is_open)
+        active_records += 1
+
+    return open_flags, active_records, deleted_records
+
+
+def _filter_storage_records(
+    records: list[OaiRecord], open_access_flags: list[bool], *, open_access_only: bool
+) -> tuple[list[OaiRecord], list[bool]]:
+    if not open_access_only:
+        return list(records), list(open_access_flags)
+
+    filtered_records: list[OaiRecord] = []
+    filtered_flags: list[bool] = []
+    for record, is_open in zip(records, open_access_flags):
+        if record.deleted or is_open:
+            filtered_records.append(record)
+            filtered_flags.append(is_open)
+    return filtered_records, filtered_flags
+
+
 class Harvester:
     def __init__(
         self, config: HarvesterConfig, client: _OaiClientProtocol, storage
@@ -115,38 +150,22 @@ class Harvester:
     def _save_state(self, state: HarvestState) -> None:
         save_state(self.config.state_file, state)
 
-    def _write(self, records: list[OaiRecord], source_url: str, dry_run: bool) -> int:
+    def _write(
+        self,
+        records: list[OaiRecord],
+        open_access_flags: list[bool],
+        source_url: str,
+        dry_run: bool,
+    ) -> int:
         if not records:
             return 0
-
-        if self.config.open_access_only:
-            filtered_records: list[OaiRecord] = []
-            open_flags: list[bool] = []
-
-            for record in records:
-                is_open = is_open_access(record, self.config.open_access_terms)
-                if record.deleted:
-                    filtered_records.append(record)
-                    open_flags.append(False)
-                    continue
-                if is_open:
-                    filtered_records.append(record)
-                    open_flags.append(True)
-
-            records = filtered_records
-        else:
-            open_flags = [
-                is_open_access(record, self.config.open_access_terms)
-                for record in records
-            ]
-
         if dry_run or self.storage is None:
             return 0
 
         uploaded = 0
         for batch_records, batch_flags in _chunk_records(
             records,
-            open_flags,
+            open_access_flags,
             self.config.batch_size,
         ):
             uploaded += self.storage.upsert_records(
@@ -160,8 +179,8 @@ class Harvester:
         state = self._load_state()
         token = state.resumption_token
         uploaded = 0
-        active = 0
-        deleted = 0
+        active_records = 0
+        deleted_records = 0
 
         while True:
             xml = self.client.list_records(
@@ -185,15 +204,30 @@ class Harvester:
                         from_date=self.config.from_date,
                         until_date=self.config.until_date,
                         resumption_token=None,
-                        total_records=state.total_records,
+                        total_records=0,
                     )
                     self._save_state(state)
                 raise
 
             records = _iter_unique(page.records)
-            uploaded += self._write(records, self.config.base_url, dry_run=dry_run)
-            active += len([record for record in records if not record.deleted])
-            deleted += len([record for record in records if record.deleted])
+            (
+                record_open_flags,
+                page_active_records,
+                page_deleted_records,
+            ) = _classify_records(records, self.config.open_access_terms)
+            storage_records, storage_flags = _filter_storage_records(
+                records,
+                record_open_flags,
+                open_access_only=self.config.open_access_only,
+            )
+            uploaded += self._write(
+                storage_records,
+                storage_flags,
+                self.config.base_url,
+                dry_run=dry_run,
+            )
+            active_records += page_active_records
+            deleted_records += page_deleted_records
 
             token = page.resumption_token
             state = HarvestState(
@@ -216,6 +250,6 @@ class Harvester:
         return HarvestResult(
             total_records=state.total_records,
             uploaded_records=uploaded,
-            open_records=active,
-            closed_records=deleted,
+            active_records=active_records,
+            deleted_records=deleted_records,
         )

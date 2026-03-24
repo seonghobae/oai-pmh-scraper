@@ -58,6 +58,19 @@ def test_state_query_shape_mismatch_starts_clean(tmp_path) -> None:
     assert loaded.total_records == 0
 
 
+def test_state_invalid_resumption_token_type_starts_clean(tmp_path) -> None:
+    path = tmp_path / "state.json"
+    path.write_text(
+        '{"source":"https://example.org/oai","metadata_prefix":"oai_dc","set_spec":null,'
+        '"from_date":null,"until_date":null,"resumption_token":123,"total_records":0}',
+        encoding="utf-8",
+    )
+
+    loaded = load_state(path, "https://example.org/oai", "oai_dc", None, None, None)
+
+    assert loaded.resumption_token is None
+
+
 def test_state_corrupt_json_starts_clean(tmp_path) -> None:
     path = tmp_path / "state.json"
     path.write_text("{this is not json", encoding="utf-8")

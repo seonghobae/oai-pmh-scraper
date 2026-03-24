@@ -8,11 +8,20 @@ from typing import Mapping, Sequence
 def _env_bool(value: str | None, default: bool) -> bool:
     if value is None:
         return default
-    return value.strip().lower() in {"1", "true", "t", "yes", "y", "on"}
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "f", "no", "n", "off"}:
+        return False
+    raise ValueError(f"Invalid boolean value: {value!r}")
 
 
 def _env_text(value: str | None, default: str) -> str:
     return (value or default).strip()
+
+
+def _env_optional_text(value: str | None) -> str | None:
+    return (value or "").strip() or None
 
 
 def _split_terms(value: str | None, default_terms: Sequence[str]) -> tuple[str, ...]:
@@ -95,6 +104,15 @@ def load_config(env: Mapping[str, str | None]) -> HarvesterConfig:
 
     user_agent = _env_text(env.get("OAI_USER_AGENT"), "oai-pmh-scraper/0.1.0")
 
+    sf_account = _env_optional_text(env.get("SNOWFLAKE_ACCOUNT"))
+    sf_user = _env_optional_text(env.get("SNOWFLAKE_USER"))
+    sf_password = _env_optional_text(env.get("SNOWFLAKE_PASSWORD"))
+    required_snowflake = (sf_account, sf_user, sf_password)
+    if any(required_snowflake) and not all(required_snowflake):
+        raise ValueError(
+            "SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, and SNOWFLAKE_PASSWORD must be set together"
+        )
+
     return HarvesterConfig(
         base_url=base_url,
         metadata_prefix=metadata_prefix,
@@ -107,12 +125,12 @@ def load_config(env: Mapping[str, str | None]) -> HarvesterConfig:
         batch_size=batch_size,
         timeout_seconds=timeout_seconds,
         user_agent=user_agent,
-        sf_account=(env.get("SNOWFLAKE_ACCOUNT") or None),
-        sf_user=(env.get("SNOWFLAKE_USER") or None),
-        sf_password=(env.get("SNOWFLAKE_PASSWORD") or None),
-        sf_role=(env.get("SNOWFLAKE_ROLE") or None),
-        sf_warehouse=(env.get("SNOWFLAKE_WAREHOUSE") or None),
-        sf_database=(env.get("SNOWFLAKE_DATABASE") or "HARMONIA"),
-        sf_schema=(env.get("SNOWFLAKE_SCHEMA") or "PUBLIC"),
-        sf_table=(env.get("SNOWFLAKE_TABLE") or "PAPERS"),
+        sf_account=sf_account,
+        sf_user=sf_user,
+        sf_password=sf_password,
+        sf_role=_env_optional_text(env.get("SNOWFLAKE_ROLE")),
+        sf_warehouse=_env_optional_text(env.get("SNOWFLAKE_WAREHOUSE")),
+        sf_database=_env_text(env.get("SNOWFLAKE_DATABASE"), "HARMONIA"),
+        sf_schema=_env_text(env.get("SNOWFLAKE_SCHEMA"), "PUBLIC"),
+        sf_table=_env_text(env.get("SNOWFLAKE_TABLE"), "PAPERS"),
     )

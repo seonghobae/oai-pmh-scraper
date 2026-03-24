@@ -2,24 +2,28 @@
 
 ## Standard flow
 
+<!-- markdownlint-disable MD029 -->
+
 1. Request review on active PR:
 
 ```text
 @coderabbitai review
 ```
 
-1. If CodeRabbit is paused:
+2. If CodeRabbit is paused:
 
 ```text
 @coderabbitai resume
 ```
 
-1. Submit/continue review:
+3. Submit/continue review:
 
 ```text
 @coderabbitai pause
 @coderabbitai resume
 ```
+
+<!-- markdownlint-enable MD029 -->
 
 ## Operational notes
 

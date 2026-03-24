@@ -7,14 +7,14 @@ from oai_harvester import cli
 from oai_harvester.config import HarvesterConfig
 
 
-def _base_config() -> HarvesterConfig:
+def _base_config(state_file: Path) -> HarvesterConfig:
     return HarvesterConfig(
         base_url="https://example.org/oai",
         metadata_prefix="oai_dc",
         set_spec=None,
         from_date=None,
         until_date=None,
-        state_file=Path("/tmp/state.json"),
+        state_file=state_file,
         open_access_only=False,
         open_access_terms=("open access",),
         batch_size=0,
@@ -28,6 +28,7 @@ def _base_config() -> HarvesterConfig:
 
 def test_cli_closes_resources_on_harvest_failure(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     events: list[str] = []
 
@@ -50,7 +51,9 @@ def test_cli_closes_resources_on_harvest_failure(
         def close(self) -> None:
             events.append("storage.close")
 
-    monkeypatch.setattr(cli, "load_config", lambda env: _base_config())
+    monkeypatch.setattr(
+        cli, "load_config", lambda env: _base_config(tmp_path / "state.json")
+    )
     monkeypatch.setattr(cli, "OaiClient", lambda *args, **kwargs: FakeClient())
     monkeypatch.setattr(cli, "_build_storage", lambda config: FakeStorage())
     monkeypatch.setattr(cli, "Harvester", FakeHarvester)

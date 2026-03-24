@@ -7,7 +7,7 @@ This repository is maintained primarily by agents with defined scopes.
 - `general`: quick repository audits, documentation checks, and multi-step planning.
 - `review`: code review passes, finding quality and security regression risks.
 - `requesting-code-review`: pre-merge verification and review coordination.
-- `testing`-focused agents: targeted test updates for parser/state/runner behavior.
+- `testing-focused` agents: targeted test updates for parser/state/runner behavior.
 
 ## Invocation guidance
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from oai_harvester.config import load_config
 
 
@@ -29,9 +31,5 @@ def test_invalid_batch_size_raises() -> None:
         "OAI_BASE_URL": "https://example.org/oai",
         "HARVEST_BATCH_SIZE": "not-int",
     }
-    try:
+    with pytest.raises(ValueError, match="HARVEST_BATCH_SIZE"):
         load_config(env)
-    except ValueError as exc:
-        assert "HARVEST_BATCH_SIZE" in str(exc)
-    else:
-        raise AssertionError("Expected ValueError")

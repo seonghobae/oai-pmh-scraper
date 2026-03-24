@@ -2,10 +2,19 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+import re
 
 import snowflake.connector  # type: ignore
 
 from .models import OaiRecord
+
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_identifier(value: str, label: str) -> str:
+    if not _IDENTIFIER_PATTERN.match(value):
+        raise ValueError(f"Invalid {label}: {value!r}")
+    return f'"{value.replace(chr(34), chr(34) + chr(34))}"'
 
 
 class SnowflakeStorage:
@@ -22,9 +31,9 @@ class SnowflakeStorage:
         table: str = "PAPERS",
         connection=None,
     ) -> None:
-        self.database = database
-        self.schema = schema
-        self.table = table
+        self.database = _safe_identifier(database, "database")
+        self.schema = _safe_identifier(schema, "schema")
+        self.table = _safe_identifier(table, "table")
         if connection is None:
             self.connection = snowflake.connector.connect(
                 account=account,
@@ -61,6 +70,8 @@ class SnowflakeStorage:
     ) -> int:
         if not records:
             return 0
+        if len(records) != len(open_access_flags):
+            raise ValueError("records and open_access_flags must have the same length")
 
         self.ensure_table()
         sql = f"""

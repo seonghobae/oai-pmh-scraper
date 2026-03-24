@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from oai_harvester.parser import OaiListRecordsPage, parse_oai_listrecords
 from oai_harvester.errors import OAIError, OAINoRecords, OAIProtocolError
 
@@ -60,12 +62,8 @@ def test_no_records_match_raises_specific_exception() -> None:
     </OAI-PMH>
     """
 
-    try:
+    with pytest.raises(OAINoRecords, match="No records found"):
         parse_oai_listrecords(xml)
-    except OAINoRecords as exc:
-        assert "No records found" in str(exc)
-    else:
-        raise AssertionError("Expected OAINoRecords")
 
 
 def test_unknown_oai_error_bubbles_up() -> None:
@@ -75,12 +73,8 @@ def test_unknown_oai_error_bubbles_up() -> None:
     </OAI-PMH>
     """
 
-    try:
+    with pytest.raises(OAIError):
         parse_oai_listrecords(xml)
-    except OAIError:
-        pass
-    else:
-        raise AssertionError("Expected OAIError")
 
 
 def test_bad_resumption_token_is_protocol_error() -> None:
@@ -90,13 +84,9 @@ def test_bad_resumption_token_is_protocol_error() -> None:
     </OAI-PMH>
     """
 
-    try:
+    with pytest.raises(OAIProtocolError, match="Bad token") as exc_info:
         parse_oai_listrecords(xml)
-    except OAIProtocolError as exc:
-        assert exc.code == "badResumptionToken"
-        assert "Bad token" in str(exc)
-    else:
-        raise AssertionError("Expected OAIProtocolError")
+    assert exc_info.value.code == "badResumptionToken"
 
 
 def test_parse_xml_with_unbound_namespace_prefix() -> None:

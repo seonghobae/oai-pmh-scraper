@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import os
+import tempfile
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
@@ -29,6 +31,30 @@ class HarvestState:
         }
 
 
+def _default_state(
+    source: str,
+    metadata_prefix: str,
+    set_spec: str | None,
+    from_date: str | None,
+    until_date: str | None,
+) -> HarvestState:
+    return HarvestState(
+        source=source,
+        metadata_prefix=metadata_prefix,
+        set_spec=set_spec,
+        from_date=from_date,
+        until_date=until_date,
+        resumption_token=None,
+        total_records=0,
+    )
+
+
+def _coerce_resumption_token(value: object) -> str | None:
+    if isinstance(value, str):
+        return value
+    return None
+
+
 def load_state(
     path: Path,
     source: str,
@@ -38,38 +64,14 @@ def load_state(
     until_date: str | None,
 ) -> HarvestState:
     if not path.exists():
-        return HarvestState(
-            source=source,
-            metadata_prefix=metadata_prefix,
-            set_spec=set_spec,
-            from_date=from_date,
-            until_date=until_date,
-            resumption_token=None,
-            total_records=0,
-        )
+        return _default_state(source, metadata_prefix, set_spec, from_date, until_date)
 
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, JSONDecodeError):
-        return HarvestState(
-            source=source,
-            metadata_prefix=metadata_prefix,
-            set_spec=set_spec,
-            from_date=from_date,
-            until_date=until_date,
-            resumption_token=None,
-            total_records=0,
-        )
+        return _default_state(source, metadata_prefix, set_spec, from_date, until_date)
     if not isinstance(payload, dict):
-        return HarvestState(
-            source=source,
-            metadata_prefix=metadata_prefix,
-            set_spec=set_spec,
-            from_date=from_date,
-            until_date=until_date,
-            resumption_token=None,
-            total_records=0,
-        )
+        return _default_state(source, metadata_prefix, set_spec, from_date, until_date)
 
     if (
         payload.get("source") != source
@@ -78,15 +80,7 @@ def load_state(
         or payload.get("from_date") != from_date
         or payload.get("until_date") != until_date
     ):
-        return HarvestState(
-            source=source,
-            metadata_prefix=metadata_prefix,
-            set_spec=set_spec,
-            from_date=from_date,
-            until_date=until_date,
-            resumption_token=None,
-            total_records=0,
-        )
+        return _default_state(source, metadata_prefix, set_spec, from_date, until_date)
 
     total_records = 0
     raw_total_records = payload.get("total_records")
@@ -95,18 +89,32 @@ def load_state(
     elif isinstance(raw_total_records, str) and raw_total_records.isdigit():
         total_records = int(raw_total_records)
 
+    resumption_token = _coerce_resumption_token(payload.get("resumption_token"))
+
     return HarvestState(
         source=source,
         metadata_prefix=metadata_prefix,
         set_spec=set_spec,
         from_date=from_date,
         until_date=until_date,
-        resumption_token=payload.get("resumption_token"),
+        resumption_token=resumption_token,
         total_records=total_records,
     )
 
 
 def save_state(path: Path, state: HarvestState) -> None:
-    path.write_text(
-        json.dumps(state.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", dir=path.parent, suffix=".tmp", encoding="utf-8", delete=False
+        ) as file:
+            tmp_path = file.name
+            content = json.dumps(state.to_dict(), ensure_ascii=False, indent=2)
+            file.write(content)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path is not None and os.path.exists(tmp_path):
+            os.remove(tmp_path)

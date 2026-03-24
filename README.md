@@ -68,4 +68,3 @@ Snowflake 인증:
 ## 라이선스
 
 MIT
-Tooling to harvest open-access papers via OAI-PMH and store in Snowflake

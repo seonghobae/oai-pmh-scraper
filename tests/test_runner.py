@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import pytest
+
 from oai_harvester.config import HarvesterConfig
 from oai_harvester.models import OaiRecord
 from oai_harvester.runner import Harvester, is_open_access
+from oai_harvester.errors import OAIProtocolError
 
 
 class FakeClient:
@@ -111,8 +114,8 @@ def test_runner_preserves_deleted_records_when_open_access_filter_enabled(
     identifiers = {record.identifier for record in stored_records}
     assert identifiers == {"id-deleted", "id-open"}
     assert result.uploaded_records == 2
-    assert result.open_records == 2
-    assert result.closed_records == 1
+    assert result.active_records == 2
+    assert result.deleted_records == 1
 
 
 def test_runner_resets_state_and_raises_on_bad_resumption_token(tmp_path) -> None:
@@ -156,14 +159,9 @@ def test_runner_resets_state_and_raises_on_bad_resumption_token(tmp_path) -> Non
     )
     save_state(tmp_path / "state.json", seeded_state)
 
-    from oai_harvester.errors import OAIProtocolError
-
-    try:
+    with pytest.raises(OAIProtocolError) as exc_info:
         Harvester(cfg, client=client, storage=storage).run(dry_run=False)
-    except OAIProtocolError as exc:
-        assert exc.code == "badResumptionToken"
-    else:
-        raise AssertionError("Expected OAIProtocolError")
+    assert exc_info.value.code == "badResumptionToken"
 
     from oai_harvester.state import load_state
 
@@ -176,6 +174,7 @@ def test_runner_resets_state_and_raises_on_bad_resumption_token(tmp_path) -> Non
         until_date=None,
     )
     assert resumed.resumption_token is None
+    assert resumed.total_records == 0
 
 
 def test_runner_with_resumption_token(tmp_path) -> None:
@@ -230,12 +229,12 @@ def test_runner_with_resumption_token(tmp_path) -> None:
     # open_access_only True: first kept second dropped
     assert storage.calls[0][0][0].identifier == "id-1"
     assert len(storage.calls[0][0]) == 1
-    assert len(storage.calls) == 2
-    assert storage.calls[1][0] == []
-    assert storage.calls[1][1] == []
+    assert len(storage.calls) == 1
 
     assert result.total_records == 2
     assert result.uploaded_records == 1
+    assert result.active_records == 2
+    assert result.deleted_records == 0
 
 
 def test_runner_respects_batch_size_for_storage_writes(tmp_path) -> None:
@@ -279,3 +278,5 @@ def test_runner_respects_batch_size_for_storage_writes(tmp_path) -> None:
     assert len(storage.calls[0][0]) == 1
     assert len(storage.calls[1][0]) == 1
     assert result.uploaded_records == 2
+    assert result.active_records == 2
+    assert result.deleted_records == 0
