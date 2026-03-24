@@ -1,0 +1,30 @@
+[project]
+name = "oai-pmh-scraper"
+version = "0.1.0"
+description = "Harvest open papers from OAI-PMH endpoints and persist to Snowflake"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "requests>=2.32",
+  "snowflake-connector-python>=3.12",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "pytest-mock>=3.14",
+  "responses>=0.25",
+]
+
+[project.scripts]
+oai-pmh-harvester = "oai_harvester.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oai_harvester"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
