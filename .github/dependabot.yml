@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    # Temporary containment: snowflake-connector-python==4.3.0 requires
+    # pyOpenSSL<26, so Dependabot security updates that force pyOpenSSL>=26
+    # become unsatisfiable and fail the update run.
+    # Remove these ignore rules once Snowflake publishes compatible constraints.
+    ignore:
+      - dependency-name: "pyopenssl"
+        versions: [">=26.0.0"]
+      - dependency-name: "pyOpenSSL"
+        versions: [">=26.0.0"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
