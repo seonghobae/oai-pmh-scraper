@@ -8,7 +8,7 @@ import snowflake.connector  # type: ignore
 
 from .models import OaiRecord
 
-_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 _UTC = getattr(datetime, "UTC", timezone.utc)
 
 

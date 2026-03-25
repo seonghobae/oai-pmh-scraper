@@ -17,6 +17,13 @@ from .errors import OAINoRecords, OAIParseError, OAIProtocolError
 from .models import OaiRecord
 
 _NS = "{http://www.openarchives.org/OAI/2.0/}"
+_TAG_PREFIX_PATTERN = re.compile(r"</?([A-Za-z_][\w.-]*):[A-Za-z_][\w.-]*")
+_DECLARED_PREFIX_PATTERN = re.compile(
+    r"\s+xmlns:([A-Za-z_][\w.-]*)=(\"[^\"]*\"|'[^']*')"
+)
+_ROOT_START_TAG_PATTERN = re.compile(
+    r"<([A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?)(\s[^<>]*?)?>"
+)
 
 
 @dataclass(frozen=True)
@@ -32,13 +39,30 @@ def _clean_text(value: str | None) -> str | None:
     return text or None
 
 
-def _normalize_xml(xml_text: str) -> str:
-    no_prefixed_namespaces = re.sub(
-        r"\s+xmlns:[A-Za-z_][\w.-]*=(\"[^\"]*\"|'[^']*')",
-        "",
-        xml_text,
+def _inject_missing_prefix_declarations(xml_text: str) -> str:
+    used_prefixes = {match.group(1) for match in _TAG_PREFIX_PATTERN.finditer(xml_text)}
+    declared_prefixes = {
+        match.group(1) for match in _DECLARED_PREFIX_PATTERN.finditer(xml_text)
+    }
+    missing_prefixes = sorted(used_prefixes - declared_prefixes)
+    if not missing_prefixes:
+        return xml_text
+
+    root_match = _ROOT_START_TAG_PATTERN.search(xml_text)
+    if root_match is None:
+        return xml_text
+
+    declarations = "".join(
+        f' xmlns:{prefix}="urn:auto-normalized:{prefix}"' for prefix in missing_prefixes
     )
-    return re.sub(r"<(/?)[A-Za-z_][\w.-]*:", r"<\1", no_prefixed_namespaces)
+    insert_at = root_match.end() - 1
+    return f"{xml_text[:insert_at]}{declarations}{xml_text[insert_at:]}"
+
+
+def _normalize_xml(xml_text: str) -> str:
+    normalized_input = _inject_missing_prefix_declarations(xml_text)
+    root = safe_fromstring(normalized_input)
+    return ET.tostring(root, encoding="unicode")
 
 
 def _to_json(elem: ET.Element) -> Any:

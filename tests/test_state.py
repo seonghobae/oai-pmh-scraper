@@ -99,6 +99,7 @@ def test_state_invalid_total_records_values_start_clean(tmp_path) -> None:
     )
 
     loaded = load_state(path, "https://example.org/oai", "oai_dc", None, None, None)
+    assert loaded.resumption_token is None
     assert loaded.total_records == 0
 
     path.write_text(
@@ -110,6 +111,7 @@ def test_state_invalid_total_records_values_start_clean(tmp_path) -> None:
     loaded_bool = load_state(
         path, "https://example.org/oai", "oai_dc", None, None, None
     )
+    assert loaded_bool.resumption_token is None
     assert loaded_bool.total_records == 0
 
 

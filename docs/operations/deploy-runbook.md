@@ -3,8 +3,11 @@
 ## Pre-deploy checks
 
 - Confirm `uv run pytest -q` passes on clean working tree.
-- Confirm required environment variables for target mode:
-  - required OAI variables and optional Snowflake credentials.
+- Confirm environment variables for target mode:
+  - **Required:** `OAI_BASE_URL`
+  - **Optional (default `oai_dc`):** `OAI_METADATA_PREFIX`
+  - **Optional Snowflake (must be set together if used):**
+    `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`
 - Verify state file path is writable for the deploy user.
 
 ## Deployment steps
@@ -25,14 +28,20 @@ OAI_BASE_URL=https://example.org/oai uv run oai-pmh-harvester --dry-run
 
 ## Post-deploy verification
 
-- Confirm successful completion logs include `harvested/ uploaded / active /`
-  `deleted` summary.
-- Validate state file `resumptionToken` progresses as expected.
+- Confirm successful completion logs include
+  `harvested=X uploaded=Y active=Z deleted=W`.
+- Validate state file `resumption_token` progresses as expected.
 - Re-run with same query window to verify idempotency.
 
 ## Rollback
 
 If a run fails repeatedly:
 
-- Inspect last state and restart after clearing/resetting resumption token if needed.
+- If resumption state appears broken, use this minimal reset procedure:
+  1. Stop the running harvester process/service.
+  2. Locate the configured state file (`OAI_STATE_FILE`, default
+     `.oai_harvest_state.json`).
+  3. Back up the file, then either delete it or set
+     `resumption_token` to `null` in JSON.
+  4. Restart the harvester and verify a fresh cursor progression from logs.
 - Re-run with unchanged query parameters and track progress in logs.

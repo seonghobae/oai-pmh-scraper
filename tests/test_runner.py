@@ -11,6 +11,7 @@ from oai_harvester.runner import (
     is_open_access,
 )
 from oai_harvester.errors import OAIProtocolError
+from oai_harvester.state import HarvestState, load_state, save_state
 
 
 class FakeClient:
@@ -44,7 +45,11 @@ class FakeStorage:
         self.calls: list[tuple[list[OaiRecord], list[bool]]] = []
 
     def upsert_records(
-        self, records: list[OaiRecord], source_url: str, open_access_flags: list[bool]
+        self,
+        records: list[OaiRecord],
+        *,
+        source_url: str,
+        open_access_flags: list[bool],
     ) -> int:
         self.calls.append((list(records), list(open_access_flags)))
         return len(records)
@@ -186,9 +191,6 @@ def test_runner_resets_state_and_raises_on_bad_resumption_token(tmp_path) -> Non
     )
 
     # seed state with bad token
-    from oai_harvester.state import save_state
-    from oai_harvester.state import HarvestState
-
     seeded_state = HarvestState(
         source="https://example.org/oai",
         metadata_prefix="oai_dc",
@@ -203,8 +205,6 @@ def test_runner_resets_state_and_raises_on_bad_resumption_token(tmp_path) -> Non
     with pytest.raises(OAIProtocolError) as exc_info:
         Harvester(cfg, client=client, storage=storage).run(dry_run=False)
     assert exc_info.value.code == "badResumptionToken"
-
-    from oai_harvester.state import load_state
 
     resumed = load_state(
         tmp_path / "state.json",
