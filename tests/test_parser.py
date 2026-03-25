@@ -107,3 +107,4 @@ def test_parse_xml_with_unbound_namespace_prefix() -> None:
     page = parse_oai_listrecords(xml)
     assert len(page.records) == 1
     assert page.records[0].identifier == "oai:example:3"
+    assert page.records[0].metadata["rights"] == "open access"

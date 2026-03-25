@@ -31,7 +31,8 @@ OAI_BASE_URL=https://example.org/oai uv run oai-pmh-harvester --dry-run
 - Confirm successful completion logs include
   `harvested=X uploaded=Y active=Z deleted=W`.
 - Validate state file `resumption_token` progresses as expected.
-- Re-run with same query window to verify idempotency.
+- Re-run with the same query window to verify storage-level idempotency:
+  confirm the rerun does not create duplicate rows (upsert/MERGE semantics).
 
 ## Rollback
 
