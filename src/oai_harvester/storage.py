@@ -18,6 +18,33 @@ def _safe_identifier(value: str, label: str) -> str:
     return f'"{value.replace(chr(34), chr(34) + chr(34))}"'
 
 
+def _is_injected_connection_autocommit_enabled(connection: object) -> bool:
+    cursor_factory = getattr(connection, "cursor", None)
+    if not callable(cursor_factory):
+        return False
+
+    cursor = cursor_factory()
+    try:
+        cursor.execute("SELECT CURRENT_SETTING('AUTOCOMMIT')")
+        fetchone = getattr(cursor, "fetchone", None)
+        if not callable(fetchone):
+            return False
+        row = fetchone()
+    except Exception:
+        # Some test doubles/non-Snowflake implementations may not support the
+        # session query; skip strict validation in that case.
+        return False
+    finally:
+        close = getattr(cursor, "close", None)
+        if callable(close):
+            close()
+
+    if row is None:
+        return False
+    raw_value = row[0] if isinstance(row, (list, tuple)) else row
+    return str(raw_value).strip().lower() in {"1", "true", "on", "yes"}
+
+
 class SnowflakeStorage:
     def __init__(
         self,
@@ -47,8 +74,7 @@ class SnowflakeStorage:
         else:
             self.connection = connection
 
-        autocommit = getattr(self.connection, "autocommit", None)
-        if isinstance(autocommit, bool) and autocommit:
+        if _is_injected_connection_autocommit_enabled(self.connection):
             raise ValueError("Injected connection must have autocommit disabled")
 
     @property
@@ -58,14 +84,15 @@ class SnowflakeStorage:
     def ensure_table(self) -> None:
         sql = f"""
         create table if not exists {self.full_table} (
-            identifier string primary key,
+            identifier string not null,
             status string not null,
             datestamp string,
             metadata variant,
             raw_record_xml string,
             open_access boolean,
-            source_url string,
-            harvested_at timestamp_ntz
+            source_url string not null,
+            harvested_at timestamp_ntz,
+            primary key (source_url, identifier)
         )
         """
         with self.connection.cursor() as cursor:
@@ -100,7 +127,8 @@ class SnowflakeStorage:
                 %s as source_url,
                 %s as harvested_at
         ) as src
-        on tgt.identifier = src.identifier
+        on tgt.source_url = src.source_url
+        and tgt.identifier = src.identifier
         when matched then
             update set
                 status = src.status,

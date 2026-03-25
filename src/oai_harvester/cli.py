@@ -35,9 +35,10 @@ def run_harvest(*, dry_run: bool = False) -> int:
         user_agent=config.user_agent,
         timeout_seconds=config.timeout_seconds,
     )
-    storage = _build_storage(config)
+    storage: SnowflakeStorage | None = None
 
     try:
+        storage = _build_storage(config)
         harvester = Harvester(config=config, client=client, storage=storage)
         result = harvester.run(dry_run=dry_run)
     finally:

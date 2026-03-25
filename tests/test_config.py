@@ -69,3 +69,18 @@ def test_partial_snowflake_credentials_raises() -> None:
     }
     with pytest.raises(ValueError, match="SNOWFLAKE_ACCOUNT.*set together"):
         load_config(env)
+
+
+def test_config_repr_redacts_snowflake_password() -> None:
+    env = {
+        "OAI_BASE_URL": "https://example.org/oai",
+        "SNOWFLAKE_ACCOUNT": "acc",
+        "SNOWFLAKE_USER": "user",
+        "SNOWFLAKE_PASSWORD": "super-secret",
+    }
+    cfg = load_config(env)
+
+    rendered = repr(cfg)
+    assert "super-secret" not in rendered
+    assert "sf_password" not in rendered
+    assert "sf_user='user'" in rendered

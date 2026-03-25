@@ -28,9 +28,17 @@
 - Storage writes enforce transaction safety: connections are non-autocommit,
   exceptions trigger rollback, and commit happens only on successful batch write.
 - Runner continues pagination based on `resumptionToken` even when a page has
-  zero records, with repeated-token guard to avoid stuck loops.
+  zero records, and repeated-token detection now resets persisted state then
+  raises `badResumptionToken` to avoid carrying a stuck cursor across runs.
 - `OaiRecord.metadata` is stored as an immutable mapping copy to prevent
   accidental mutation after record creation.
+- Parser namespace normalization injects missing prefix declarations from both
+  element tags and attribute QNames (e.g., `xsi:schemaLocation`) before retrying
+  parse.
+- Snowflake record identity is scoped by `(source_url, identifier)` in both
+  schema definition and `MERGE` key to prevent cross-source overwrite.
+- Injected storage connections validate session autocommit through
+  `CURRENT_SETTING('AUTOCOMMIT')` when available.
 
 ## Change impact rule
 

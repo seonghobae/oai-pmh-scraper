@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -48,7 +48,7 @@ class HarvesterConfig:
     # Snowflake
     sf_account: str | None = None
     sf_user: str | None = None
-    sf_password: str | None = None
+    sf_password: str | None = field(default=None, repr=False)
     sf_role: str | None = None
     sf_warehouse: str | None = None
     sf_database: str = "HARMONIA"

@@ -15,7 +15,8 @@ uv run pytest -q
 Optional quality gate:
 
 ```bash
-PYTHONPATH=src python -m scripts.lint_by_filetype --json
+PYTHONPATH="${OPENCODE_HOME:-$HOME/.config/opencode}" \
+  python3 -m scripts.lint_by_filetype --json
 ```
 
 ## Required evidence before merge

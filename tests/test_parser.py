@@ -108,3 +108,23 @@ def test_parse_xml_with_unbound_namespace_prefix() -> None:
     assert len(page.records) == 1
     assert page.records[0].identifier == "oai:example:3"
     assert page.records[0].metadata["rights"] == "open access"
+
+
+def test_parse_xml_with_attribute_only_unbound_prefix() -> None:
+    xml = """
+    <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+      <ListRecords>
+        <record>
+          <header><identifier>oai:example:4</identifier><datestamp>2026-01-04T00:00:00Z</datestamp></header>
+          <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <dc:rights xsi:type="dcterms:URI">open access</dc:rights>
+          </metadata>
+        </record>
+      </ListRecords>
+    </OAI-PMH>
+    """
+
+    page = parse_oai_listrecords(xml)
+    assert len(page.records) == 1
+    assert page.records[0].identifier == "oai:example:4"
+    assert page.records[0].metadata["rights"] == "open access"

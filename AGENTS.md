@@ -16,7 +16,7 @@
 
 - Unit tests: `uv run pytest -q`
 - Lint/check by changed filetype:
-  - `PYTHONPATH="${OPENCODE_HOME:-$HOME/.config/opencode}"`
+  - `PYTHONPATH="${OPENCODE_HOME:-$HOME/.config/opencode}"` and then
     `python3 -m scripts.lint_by_filetype --json`
 
 ## Delivery and PR policy

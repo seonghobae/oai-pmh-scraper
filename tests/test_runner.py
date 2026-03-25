@@ -324,6 +324,54 @@ def test_runner_continues_when_page_is_empty_but_token_exists(tmp_path) -> None:
     assert result.uploaded_records == 1
 
 
+def test_runner_resets_state_and_raises_on_repeated_resumption_token(tmp_path) -> None:
+    repeated_page = """
+    <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+      <ListRecords>
+        <record>
+          <header><identifier>id-1</identifier><datestamp>2026-01-01</datestamp></header>
+          <metadata><oai_dc:dc xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"><dc:rights>open access</dc:rights></oai_dc:dc></metadata>
+        </record>
+        <resumptionToken>cursor-dup</resumptionToken>
+      </ListRecords>
+    </OAI-PMH>
+    """
+
+    client = FakeClient([repeated_page, repeated_page])
+    storage = FakeStorage()
+    cfg = HarvesterConfig(
+        base_url="https://example.org/oai",
+        metadata_prefix="oai_dc",
+        set_spec=None,
+        from_date=None,
+        until_date=None,
+        state_file=tmp_path / "state.json",
+        open_access_only=False,
+        open_access_terms=("open access",),
+        batch_size=0,
+        timeout_seconds=30,
+        user_agent="test",
+        sf_account="acc",
+        sf_user="u",
+        sf_password="p",
+    )
+
+    with pytest.raises(OAIProtocolError) as exc_info:
+        Harvester(cfg, client=client, storage=storage).run(dry_run=False)
+    assert exc_info.value.code == "badResumptionToken"
+
+    resumed = load_state(
+        tmp_path / "state.json",
+        source="https://example.org/oai",
+        metadata_prefix="oai_dc",
+        set_spec=None,
+        from_date=None,
+        until_date=None,
+    )
+    assert resumed.resumption_token is None
+    assert resumed.total_records == 0
+
+
 def test_runner_respects_batch_size_for_storage_writes(tmp_path) -> None:
     page = """
     <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">

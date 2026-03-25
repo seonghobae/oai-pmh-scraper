@@ -9,10 +9,17 @@ from oai_harvester.storage import SnowflakeStorage
 
 
 class FakeCursor:
-    def __init__(self, *, fail_executemany: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        fail_executemany: bool = False,
+        session_autocommit: bool = False,
+    ) -> None:
         self.fail_executemany = fail_executemany
+        self.session_autocommit = session_autocommit
         self.execute_calls: list[tuple[str, object | None]] = []
         self.executemany_calls: list[tuple[str, list[tuple[object, ...]]]] = []
+        self._autocommit_query_seen = False
 
     def __enter__(self) -> FakeCursor:
         return self
@@ -22,22 +29,36 @@ class FakeCursor:
 
     def execute(self, sql: str, params: object | None = None) -> None:
         self.execute_calls.append((sql, params))
+        self._autocommit_query_seen = "CURRENT_SETTING('AUTOCOMMIT')" in sql
 
     def executemany(self, sql: str, params: list[tuple[object, ...]]) -> None:
         if self.fail_executemany:
             raise RuntimeError("bulk failure")
         self.executemany_calls.append((sql, params))
 
+    def fetchone(self):
+        if self._autocommit_query_seen:
+            return ("true" if self.session_autocommit else "false",)
+        return None
+
+    def close(self) -> None:
+        pass
+
 
 class FakeConnection:
     def __init__(
-        self, *, fail_executemany: bool = False, autocommit: bool = False
+        self,
+        *,
+        fail_executemany: bool = False,
+        session_autocommit: bool = False,
     ) -> None:
-        self.cursor_obj = FakeCursor(fail_executemany=fail_executemany)
+        self.cursor_obj = FakeCursor(
+            fail_executemany=fail_executemany,
+            session_autocommit=session_autocommit,
+        )
         self.commit_count = 0
         self.rollback_count = 0
         self.closed = False
-        self.autocommit = autocommit
 
     def cursor(self) -> FakeCursor:
         return self.cursor_obj
@@ -89,12 +110,20 @@ def test_storage_uses_executemany_for_upserts() -> None:
     )
 
     assert count == 2
-    # ensure_table call
-    assert len(connection.cursor_obj.execute_calls) == 1
+    # connection autocommit check + ensure_table call
+    assert len(connection.cursor_obj.execute_calls) == 2
+    assert (
+        "current_setting('autocommit')"
+        in connection.cursor_obj.execute_calls[0][0].lower()
+    )
+    create_sql, _ = connection.cursor_obj.execute_calls[1]
+    assert "primary key (source_url, identifier)" in create_sql.lower()
     # bulk upsert call
     assert len(connection.cursor_obj.executemany_calls) == 1
     sql, params = connection.cursor_obj.executemany_calls[0]
     assert "merge into" in sql.lower()
+    assert "on tgt.source_url = src.source_url" in sql.lower()
+    assert "and tgt.identifier = src.identifier" in sql.lower()
     assert len(params) == 2
     assert connection.commit_count == 1
 
@@ -147,4 +176,4 @@ def test_storage_rolls_back_on_upsert_failure() -> None:
 
 def test_storage_rejects_injected_autocommit_connection() -> None:
     with pytest.raises(ValueError, match="autocommit"):
-        _build_storage(FakeConnection(autocommit=True))
+        _build_storage(FakeConnection(session_autocommit=True))

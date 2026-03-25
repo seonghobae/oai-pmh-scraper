@@ -18,6 +18,9 @@ from .models import OaiRecord
 
 _NS = "{http://www.openarchives.org/OAI/2.0/}"
 _TAG_PREFIX_PATTERN = re.compile(r"</?([A-Za-z_][\w.-]*):[A-Za-z_][\w.-]*")
+_ATTR_PREFIX_PATTERN = re.compile(
+    r"\s(?!(?:xml|xmlns)\b)([A-Za-z_][\w.-]*):[A-Za-z_][\w.-]*\s*="
+)
 _DECLARED_PREFIX_PATTERN = re.compile(
     r"\s+xmlns:([A-Za-z_][\w.-]*)=(\"[^\"]*\"|'[^']*')"
 )
@@ -41,6 +44,9 @@ def _clean_text(value: str | None) -> str | None:
 
 def _inject_missing_prefix_declarations(xml_text: str) -> str:
     used_prefixes = {match.group(1) for match in _TAG_PREFIX_PATTERN.finditer(xml_text)}
+    used_prefixes.update(
+        match.group(1) for match in _ATTR_PREFIX_PATTERN.finditer(xml_text)
+    )
     declared_prefixes = {
         match.group(1) for match in _DECLARED_PREFIX_PATTERN.finditer(xml_text)
     }

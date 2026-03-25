@@ -257,6 +257,22 @@ class Harvester:
             deleted_records += page_deleted_records
 
             token = page.resumption_token
+            if token and token == previous_token:
+                state = HarvestState(
+                    source=self.config.base_url,
+                    metadata_prefix=self.config.metadata_prefix,
+                    set_spec=self.config.set_spec,
+                    from_date=self.config.from_date,
+                    until_date=self.config.until_date,
+                    resumption_token=None,
+                    total_records=0,
+                )
+                self._save_state(state)
+                raise OAIProtocolError(
+                    "badResumptionToken",
+                    "Repeated resumption token encountered",
+                )
+
             state = HarvestState(
                 source=self.config.base_url,
                 metadata_prefix=self.config.metadata_prefix,
@@ -269,9 +285,6 @@ class Harvester:
             self._save_state(state)
 
             if not token:
-                break
-
-            if token == previous_token:
                 break
 
             previous_token = token
