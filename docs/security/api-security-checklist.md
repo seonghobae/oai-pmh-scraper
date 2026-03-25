@@ -24,3 +24,8 @@
 - State file stores only resumability metadata (no credentials).
 - Deleted records are retained in upsert flow for synchronization consistency.
 - Logs avoid printing raw secrets.
+
+## Dependency security governance
+
+- Dependency exceptions must be explicit, temporary, and documented in
+  `docs/security/dependency-exceptions.md` with exit criteria.
