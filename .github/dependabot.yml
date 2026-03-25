@@ -17,7 +17,5 @@ updates:
       - dependency-name: "pyOpenSSL"
         versions: [">=26.0.0"]
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+    # NOTE: Do not add a `github-actions` ecosystem block until the repository
+    # actually contains workflow YAML files under `.github/workflows/`.
