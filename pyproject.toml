@@ -5,9 +5,9 @@ description = "Harvest open papers from OAI-PMH endpoints and persist to Snowfla
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "requests>=2.32",
-  "snowflake-connector-python>=3.12",
-  "defusedxml>=0.7.1",
+  "requests==2.32.5",
+  "snowflake-connector-python==4.3.0",
+  "defusedxml==0.7.1",
 ]
 
 [project.optional-dependencies]
