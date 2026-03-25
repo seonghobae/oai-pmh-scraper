@@ -84,8 +84,8 @@ def test_storage_uses_executemany_for_upserts() -> None:
 
     count = storage.upsert_records(
         records,
-        "https://example.org/oai",
-        [True, False],
+        source_url="https://example.org/oai",
+        open_access_flags=[True, False],
     )
 
     assert count == 2
@@ -115,7 +115,11 @@ def test_storage_rejects_mismatched_record_and_flag_lengths() -> None:
         ValueError,
         match=re.escape("source_url='https://example.org/oai'"),
     ):
-        storage.upsert_records(records, "https://example.org/oai", [True, False])
+        storage.upsert_records(
+            records,
+            source_url="https://example.org/oai",
+            open_access_flags=[True, False],
+        )
 
 
 def test_storage_rolls_back_on_upsert_failure() -> None:
@@ -131,7 +135,11 @@ def test_storage_rolls_back_on_upsert_failure() -> None:
     ]
 
     with pytest.raises(RuntimeError, match="bulk failure"):
-        storage.upsert_records(records, "https://example.org/oai", [True])
+        storage.upsert_records(
+            records,
+            source_url="https://example.org/oai",
+            open_access_flags=[True],
+        )
 
     assert connection.rollback_count == 1
     assert connection.commit_count == 0

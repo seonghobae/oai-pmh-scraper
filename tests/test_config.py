@@ -51,3 +51,21 @@ def test_non_positive_timeout_raises() -> None:
     }
     with pytest.raises(ValueError, match="OAI_REQUEST_TIMEOUT"):
         load_config(env)
+
+
+def test_invalid_boolean_value_raises() -> None:
+    env = {
+        "OAI_BASE_URL": "https://example.org/oai",
+        "OPEN_ACCESS_ONLY": "treu",
+    }
+    with pytest.raises(ValueError, match="Invalid boolean value"):
+        load_config(env)
+
+
+def test_partial_snowflake_credentials_raises() -> None:
+    env = {
+        "OAI_BASE_URL": "https://example.org/oai",
+        "SNOWFLAKE_ACCOUNT": "acc",
+    }
+    with pytest.raises(ValueError, match="SNOWFLAKE_ACCOUNT.*set together"):
+        load_config(env)

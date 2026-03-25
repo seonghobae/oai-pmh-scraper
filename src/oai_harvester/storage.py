@@ -72,7 +72,11 @@ class SnowflakeStorage:
             cursor.execute(sql)
 
     def upsert_records(
-        self, records: list[OaiRecord], source_url: str, open_access_flags: list[bool]
+        self,
+        records: list[OaiRecord],
+        *,
+        source_url: str,
+        open_access_flags: list[bool],
     ) -> int:
         if not records:
             return 0

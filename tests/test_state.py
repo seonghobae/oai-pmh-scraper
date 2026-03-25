@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from oai_harvester.state import HarvestState, load_state, save_state
 
 
@@ -109,3 +111,42 @@ def test_state_invalid_total_records_values_start_clean(tmp_path) -> None:
         path, "https://example.org/oai", "oai_dc", None, None, None
     )
     assert loaded_bool.total_records == 0
+
+
+@pytest.mark.parametrize(
+    ("metadata_prefix", "from_date", "until_date"),
+    [
+        ("mods", None, None),
+        ("oai_dc", "2025-01-01", None),
+        ("oai_dc", None, "2025-01-31"),
+    ],
+)
+def test_state_other_query_shape_mismatch_starts_clean(
+    tmp_path,
+    metadata_prefix: str,
+    from_date: str | None,
+    until_date: str | None,
+) -> None:
+    path = tmp_path / "state.json"
+    state = HarvestState(
+        source="https://example.org/oai",
+        metadata_prefix="oai_dc",
+        set_spec="physics",
+        from_date=None,
+        until_date=None,
+        resumption_token="abc",
+        total_records=3,
+    )
+    save_state(path, state)
+
+    loaded = load_state(
+        path,
+        "https://example.org/oai",
+        metadata_prefix,
+        "physics",
+        from_date,
+        until_date,
+    )
+
+    assert loaded.resumption_token is None
+    assert loaded.total_records == 0
