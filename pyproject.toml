@@ -21,7 +21,7 @@ dev = [
 oai-pmh-harvester = "oai_harvester.cli:main"
 
 [build-system]
-requires = ["hatchling>=1.25"]
+requires = ["hatchling>=1.29.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
